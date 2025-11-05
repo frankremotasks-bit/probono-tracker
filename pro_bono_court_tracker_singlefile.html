@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pro-Bono Court Payment Tracker</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body{background:#f3f6fb;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial}
+    .brand {background: linear-gradient(90deg,#0b5394,#2b6cb0); color:white;}
+    .card {border-radius:12px}
+    .table thead th{background:#e9f1fb}
+    .small-muted{font-size:0.85rem;color:#6c757d}
+    .status-pill{padding:0.25rem 0.6rem;border-radius:999px;font-weight:600}
+    .status-pending{background:#fff3cd;color:#856404}
+    .status-approved{background:#d1e7dd;color:#0f5132}
+    .status-paid{background:#cfe2ff;color:#084298}
+  </style>
+</head>
+<body>
+  <nav class="navbar brand px-4 py-3">
+    <div class="container-fluid">
+      <span class="navbar-brand mb-0 h3">Pro-Bono Court Payment Tracker (Single-user)</span>
+      <div>
+        <span id="currentUser" class="me-3 small-muted"></span>
+        <button id="logoutBtn" class="btn btn-sm btn-light" style="display:none">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container my-4">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <div class="card p-3">
+          <h5>Add / Edit Case</h5>
+          <form id="caseForm">
+            <input type="hidden" id="caseId">
+            <div class="mb-2">
+              <label class="form-label">B.S/No</label>
+              <input id="bsno" class="form-control" />
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Case Number</label>
+              <input id="caseNumber" class="form-control" required />
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Client Name</label>
+              <input id="clientName" class="form-control" />
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Advocate Name</label>
+              <input id="advocateName" class="form-control" />
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Pro-bono Fee Amount</label>
+              <input id="feeAmount" type="number" step="0.01" class="form-control" />
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Date Filed</label>
+              <input id="dateFiled" type="date" class="form-control" />
+            </div>
+
+            <hr />
+            <h6>Payments</h6>
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label">1st Installment (amount)</label>
+                <input id="inst1Amt" type="number" step="0.01" class="form-control" />
+              </div>
+              <div class="col-6">
+                <label class="form-label">1st Installment Date</label>
+                <input id="inst1Date" type="date" class="form-control" />
+              </div>
+              <div class="col-6 mt-2">
+                <label class="form-label">2nd Installment (amount)</label>
+                <input id="inst2Amt" type="number" step="0.01" class="form-control" />
+              </div>
+              <div class="col-6 mt-2">
+                <label class="form-label">2nd Installment Date</label>
+                <input id="inst2Date" type="date" class="form-control" />
+              </div>
+            </div>
+
+            <div class="mb-2 mt-2">
+              <label class="form-label">Overall Payment Status</label>
+              <select id="paymentStatus" class="form-select">
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="Paid">Paid</option>
+              </select>
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label">Date Case Finalized</label>
+              <input id="dateFinalized" type="date" class="form-control" />
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label">Remarks</label>
+              <textarea id="remarks" class="form-control" rows="2"></textarea>
+            </div>
+
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-primary">Save Case</button>
+              <button type="button" id="clearForm" class="btn btn-outline-secondary">Clear</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card p-3 mt-3">
+          <h6>Export / Backup</h6>
+          <div class="mb-2 small-muted">Export the current table to PDF or download a CSV backup.</div>
+          <div class="d-grid gap-2">
+            <button id="exportPdf" class="btn btn-sm btn-primary">Export Table to PDF</button>
+            <button id="downloadCsv" class="btn btn-sm btn-outline-primary">Download CSV</button>
+            <button id="clearAll" class="btn btn-sm btn-danger">Delete All Records</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-8">
+        <div class="card p-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5>Cases</h5>
+            <div>
+              <input id="searchBox" class="form-control form-control-sm" placeholder="Search by case no, client, advocate" style="width:300px;display:inline-block" />
+            </div>
+          </div>
+
+          <div class="row mb-3 g-2">
+            <div class="col-4">
+              <select id="filterStatus" class="form-select">
+                <option value="">-- Filter by Payment Status --</option>
+                <option>Pending</option>
+                <option>Approved</option>
+                <option>Paid</option>
+              </select>
+            </div>
+            <div class="col-4">
+              <input id="filterDate" type="month" class="form-control" placeholder="Filter by month of Date Filed" />
+            </div>
+            <div class="col-4 text-end">
+              <div id="dashboardSummary" class="small-muted"></div>
+            </div>
+          </div>
+
+          <div style="overflow:auto;max-height:58vh">
+            <table class="table table-striped" id="casesTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Case No</th>
+                  <th>Client</th>
+                  <th>Advocate</th>
+                  <th>Fee</th>
+                  <th>1st</th>
+                  <th>2nd</th>
+                  <th>Status</th>
+                  <th>Date Filed</th>
+                  <th>Finalized</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Login Modal -->
+  <div class="modal" tabindex="-1" id="loginModal" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header brand text-white">
+          <h5 class="modal-title">Login</h5>
+        </div>
+        <div class="modal-body">
+          <div id="firstTimeNotice" class="mb-2 small-muted"></div>
+          <div class="mb-2">
+            <label class="form-label">Password</label>
+            <input id="loginPassword" type="password" class="form-control" />
+          </div>
+          <div id="createPassGroup" style="display:none">
+            <label class="form-label">Confirm Password</label>
+            <input id="loginPasswordConfirm" type="password" class="form-control" />
+          </div>
+          <div id="loginMsg" class="mt-2 small-muted"></div>
+        </div>
+        <div class="modal-footer">
+          <button id="loginBtn" class="btn btn-primary">Login / Create</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
+  <script>
+    // Simple single-user app storing data in localStorage. Keys:
+    // probono_cases -> JSON array of case objects
+    // probono_user_pass -> stored password (plain text in localStorage; for single-user convenience only)
+
+    const LS_KEY = 'probono_cases_v1';
+    const PASS_KEY = 'probono_user_pass_v1';
+
+    // Bootstrap modal
+    const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+
+    function uid(){return 'id-'+Math.random().toString(36).slice(2,9)}
+
+    function getCases(){
+      try{ return JSON.parse(localStorage.getItem(LS_KEY) || '[]') }
+      catch(e){return []}
+    }
+    function saveCases(arr){ localStorage.setItem(LS_KEY, JSON.stringify(arr)); }
+
+    function formatMoney(n){ if(!n) return ''; return Number(n).toLocaleString(); }
+
+    function renderTable(){
+      const tbody = document.querySelector('#casesTable tbody'); tbody.innerHTML='';
+      let data = getCases();
+      // apply filters
+      const q = document.getElementById('searchBox').value.toLowerCase().trim();
+      const status = document.getElementById('filterStatus').value;
+      const month = document.getElementById('filterDate').value; // YYYY-MM
+
+      data = data.filter(c=>{
+        if(status && c.paymentStatus !== status) return false;
+        if(month && c.dateFiled){ if(!c.dateFiled.startsWith(month)) return false }
+        if(!q) return true;
+        return (c.caseNumber||'').toLowerCase().includes(q) || (c.clientName||'').toLowerCase().includes(q) || (c.advocateName||'').toLowerCase().includes(q);
+      });
+
+      data.forEach((c,i)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${i+1}</td>
+          <td>${escapeHtml(c.caseNumber||'')}</td>
+          <td>${escapeHtml(c.clientName||'')}</td>
+          <td>${escapeHtml(c.advocateName||'')}</td>
+          <td>${formatMoney(c.feeAmount)}</td>
+          <td>${formatMoney(c.inst1Amt)}<div class="small-muted">${c.inst1Date||''}</div></td>
+          <td>${formatMoney(c.inst2Amt)}<div class="small-muted">${c.inst2Date||''}</div></td>
+          <td>${statusPill(c.paymentStatus)}</td>
+          <td>${c.dateFiled||''}</td>
+          <td>${c.dateFinalized||''}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary me-1" data-id="${c.id}" onclick="openEdit(this.dataset.id)">Edit</button>
+            <button class="btn btn-sm btn-outline-danger" data-id="${c.id}" onclick="removeCase(this.dataset.id)">Delete</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+
+      renderSummary();
+    }
+
+    function statusPill(s){
+      if(!s) s='Pending';
+      let cls='status-pending';
+      if(s==='Approved') cls='status-approved';
+      if(s==='Paid') cls='status-paid';
+      return `<span class="status-pill ${cls}">${escapeHtml(s)}</span>`;
+    }
+
+    function escapeHtml(t){ return (t+'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;') }
+
+    function openEdit(id){
+      const data = getCases(); const c = data.find(x=>x.id===id); if(!c) return;
+      document.getElementById('caseId').value = c.id;
+      document.getElementById('bsno').value = c.bsno||'';
+      document.getElementById('caseNumber').value = c.caseNumber||'';
+      document.getElementById('clientName').value = c.clientName||'';
+      document.getElementById('advocateName').value = c.advocateName||'';
+      document.getElementById('feeAmount').value = c.feeAmount||'';
+      document.getElementById('dateFiled').value = c.dateFiled||'';
+      document.getElementById('inst1Amt').value = c.inst1Amt||'';
+      document.getElementById('inst1Date').value = c.inst1Date||'';
+      document.getElementById('inst2Amt').value = c.inst2Amt||'';
+      document.getElementById('inst2Date').value = c.inst2Date||'';
+      document.getElementById('paymentStatus').value = c.paymentStatus||'Pending';
+      document.getElementById('dateFinalized').value = c.dateFinalized||'';
+      document.getElementById('remarks').value = c.remarks||'';
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+
+    function removeCase(id){ if(!confirm('Delete this record?')) return; let data = getCases(); data = data.filter(x=>x.id!==id); saveCases(data); renderTable(); }
+
+    document.getElementById('caseForm').addEventListener('submit', function(e){ e.preventDefault();
+      const id = document.getElementById('caseId').value || uid();
+      const item = {
+        id,
+        bsno: document.getElementById('bsno').value.trim(),
+        caseNumber: document.getElementById('caseNumber').value.trim(),
+        clientName: document.getElementById('clientName').value.trim(),
+        advocateName: document.getElementById('advocateName').value.trim(),
+        feeAmount: document.getElementById('feeAmount').value.trim(),
+        dateFiled: document.getElementById('dateFiled').value,
+        inst1Amt: document.getElementById('inst1Amt').value.trim(),
+        inst1Date: document.getElementById('inst1Date').value,
+        inst2Amt: document.getElementById('inst2Amt').value.trim(),
+        inst2Date: document.getElementById('inst2Date').value,
+        paymentStatus: document.getElementById('paymentStatus').value,
+        dateFinalized: document.getElementById('dateFinalized').value,
+        remarks: document.getElementById('remarks').value.trim()
+      };
+
+      let data = getCases();
+      const exists = data.findIndex(d=>d.id===id);
+      if(exists>=0) data[exists]=item; else data.unshift(item);
+      saveCases(data);
+      this.reset(); document.getElementById('caseId').value=''; renderTable();
+    });
+
+    document.getElementById('clearForm').addEventListener('click', ()=>{ document.getElementById('caseForm').reset(); document.getElementById('caseId').value=''; });
+    document.getElementById('searchBox').addEventListener('input', renderTable);
+    document.getElementById('filterStatus').addEventListener('change', renderTable);
+    document.getElementById('filterDate').addEventListener('change', renderTable);
+
+    document.getElementById('exportPdf').addEventListener('click', ()=>{
+      const element = document.querySelector('#casesTable');
+      const opt = { margin:0.2, filename: 'probono_cases.pdf', html2canvas:{scale:1.5}, jsPDF:{unit:'in',format:'a4',orientation:'landscape'}};
+      html2pdf().set(opt).from(element).save();
+    });
+
+    document.getElementById('downloadCsv').addEventListener('click', ()=>{
+      const data = getCases();
+      if(!data.length){ alert('No records to export'); return }
+      const keys = ['bsno','caseNumber','clientName','advocateName','feeAmount','inst1Amt','inst1Date','inst2Amt','inst2Date','paymentStatus','dateFiled','dateFinalized','remarks'];
+      const rows = [keys.join(',')];
+      data.forEach(r=> rows.push(keys.map(k=>`"${(r[k]||'').toString().replace(/"/g,'""')}"`).join(',')));
+      const blob = new Blob([rows.join('\n')], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='probono_cases.csv'; a.click(); URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('clearAll').addEventListener('click', ()=>{
+      if(!confirm('This will remove all records permanently. Continue?')) return; localStorage.removeItem(LS_KEY); renderTable();
+    });
+
+    function renderSummary(){
+      const data = getCases();
+      const total = data.length;
+      const pending = data.filter(x=>x.paymentStatus==='Pending').length;
+      const approved = data.filter(x=>x.paymentStatus==='Approved').length;
+      const paid = data.filter(x=>x.paymentStatus==='Paid').length;
+      const amtDue = data.reduce((s,x)=> s + (Number(x.feeAmount||0) - (Number(x.inst1Amt||0)+Number(x.inst2Amt||0)) ), 0);
+      document.getElementById('dashboardSummary').innerHTML = `Total ${total} · Pending ${pending} · Approved ${approved} · Paid ${paid} · Due ${formatMoney(amtDue)}`;
+    }
+
+    // --- Simple single-user login ---
+    function openLogin(){
+      const hasPass = !!localStorage.getItem(PASS_KEY);
+      document.getElementById('firstTimeNotice').textContent = hasPass ? 'Enter your password to unlock the tracker.' : 'No password found. Create a password to protect your data on this device.';
+      document.getElementById('createPassGroup').style.display = hasPass ? 'none' : 'block';
+      document.getElementById('loginPassword').value=''; document.getElementById('loginPasswordConfirm').value='';
+      document.getElementById('loginMsg').textContent='';
+      loginModal.show();
+    }
+
+    document.getElementById('loginBtn').addEventListener('click', ()=>{
+      const hasPass = !!localStorage.getItem(PASS_KEY);
+      const p = document.getElementById('loginPassword').value.trim();
+      if(!p){ document.getElementById('loginMsg').textContent='Password required.'; return; }
+      if(!hasPass){ const p2 = document.getElementById('loginPasswordConfirm').value.trim(); if(p!==p2){ document.getElementById('loginMsg').textContent='Passwords do not match.'; return; } localStorage.setItem(PASS_KEY,p); finishLogin(); }
+      else { const stored = localStorage.getItem(PASS_KEY); if(p===stored){ finishLogin(); } else { document.getElementById('loginMsg').textContent='Incorrect password.'; } }
+    });
+
+    function finishLogin(){ document.getElementById('currentUser').textContent='User (single)'; document.getElementById('logoutBtn').style.display='inline-block'; loginModal.hide(); renderTable(); }
+    document.getElementById('logoutBtn').addEventListener('click', ()=>{ document.getElementById('currentUser').textContent=''; document.getElementById('logoutBtn').style.display='none'; openLogin(); });
+
+    // small helper to run on load
+    (function init(){
+      // ensure array exists
+      if(!localStorage.getItem(LS_KEY)) localStorage.setItem(LS_KEY, JSON.stringify([]));
+      openLogin();
+    })();
+
+    // expose to global for inline onclicks
+    window.openEdit = openEdit;
+    window.removeCase = removeCase;
+  </script>
+</body>
+</html>
